@@ -1,49 +1,63 @@
 # 高一新生致天南地北大学生的43封信
 
-潼南中学高一（13）班 · 班主任发起 —— 一个用于展示与引导青年大学生查阅、回答高一新生来信的静态网站。
+潼南中学高一（13）班 · 班主任发起 —— 收录四十三封来自十五岁的手写信，以及三百五十封从天南地北大学校园寄回的回答。
 
 ## 特性
 
 - **青葱绿主题**：以清新葱绿为主色，配暖色信纸，兼顾温度与呼吸感。
 - **两种展示模式**：随机抽取 5 封 / 查看全部 43 封。
 - **信纸模拟**：每封信以「文字 + 模拟信纸」呈现，点击可拆开阅读。
-- **实拍 + 二维码**：每封信内保留学生手写原稿照片，并附答题二维码，扫码即可跳转回答。
+- **回答展示**：每封信内展示学生手写原稿照片，以及该问题下按时间先后排布的全部回答（正文 + 署名 + 时间）。
+- **背景音乐**：循环播放《顽固》（五月天），主页右上角小按钮可暂停 / 播放。
 - **响应式**：同时适配电脑浏览器与手机浏览。
 
 ## 目录结构
 
 ```
-tongnan-letters/
+tnletters/
 ├── index.html          # 唯一页面
 ├── css/style.css       # 样式
-├── js/data.js          # 43 封信数据（自动生成）
+├── js/data.js          # 43 封信数据（含回答，自动生成）
 ├── js/app.js           # 交互逻辑
 ├── assets/
 │   ├── photos/         # 1.jpg ~ 43.jpg 学生手写实拍
-│   └── qrcodes/        # 1.png ~ 43.png 答题二维码
+│   └── audio/          # bgm.mp3 背景音乐
 └── README.md
 ```
 
 ## 部署到 GitHub Pages
 
-1. 新建一个 GitHub 仓库（如 `tongnan-letters`），把 `tongnan-letters/` 目录内的内容推送到仓库根目录：
+1. 把 `tnletters/` 目录内的内容推送到 GitHub 仓库：
 
    ```bash
-   cd tongnan-letters
-   git init
    git add .
-   git commit -m "init: 高一新生致天南地北大学生的43封信"
-   git branch -M main
-   git remote add origin https://github.com/<你的用户名>/tongnan-letters.git
-   git push -u origin main
+   git commit -m "feat: 上线回答展示版（去答题二维码 + 背景音乐）"
+   git push
    ```
 
 2. 在仓库 **Settings → Pages** 中，将 **Source** 设为 `Deploy from a branch`，分支选 `main`、目录选 `/ (root)`，保存。
 
-3. 稍等片刻，即可通过 `https://<你的用户名>.github.io/tongnan-letters/` 访问。
+3. 稍等片刻，即可通过 `https://<你的用户名>.github.io/tongnan-letters/tnletters/` 访问（以仓库实际 Pages 配置为准）。
 
 > 纯静态站点，无需构建、无第三方依赖，直接部署即可。
 
 ## 内容更新
 
-若信件数据需要更新，可修改 `js/data.js`（`LETTERS` 数组），并同步替换 `assets/photos/` 与 `assets/qrcodes/` 下对应编号的图片。
+若信件或回答需要更新，修改 `js/data.js` 中的 `LETTERS` 数组即可。每封信的结构：
+
+```js
+{
+  "id": 1,                          // 信件编号
+  "lines": ["…"],                   // 问题内容（多段）
+  "signature": "增减性",             // 学生署名
+  "answers": [                      // 该问题下的回答（按时间先后）
+    {
+      "author": "重庆工程学院2025级财务管理 警察姐姐",
+      "time": "2026年9月30日 22:41",
+      "lines": ["…"]                // 回答正文（多段）
+    }
+  ]
+}
+```
+
+手写实拍对应 `assets/photos/<id>.jpg`。背景音乐替换 `assets/audio/bgm.mp3` 即可。

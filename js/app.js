@@ -12,6 +12,7 @@
   var reshuffleBtn = document.getElementById('reshuffle');
   var reshuffleHint = document.getElementById('reshuffle-hint');
   var modeBtns = document.querySelectorAll('.mode-btn');
+  var musicToggle = document.getElementById('music-toggle');
 
   var currentMode = 'random'; // random | all
   var currentRandomIds = [];
@@ -45,6 +46,19 @@
     return lines.map(function (l) { return '<p>' + esc(l) + '</p>'; }).join('');
   }
 
+  /* ---------- 回答按时间排序 ---------- */
+  function parseTime(s) {
+    var m = String(s || '').match(/(\d{4})年(\d{1,2})月(\d{1,2})日\s+(\d{1,2}):(\d{2})/);
+    if (!m) return 0;
+    return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime();
+  }
+
+  function sortedAnswers(lt) {
+    var ans = (lt.answers || []).slice();
+    ans.sort(function (a, b) { return parseTime(a.time) - parseTime(b.time); });
+    return ans;
+  }
+
   /* ---------- 渲染信件墙 ---------- */
   function render() {
     var ids;
@@ -57,17 +71,19 @@
 
     reshuffleBtn.hidden = currentMode !== 'random';
     reshuffleHint.textContent = currentMode === 'random'
-      ? '已随机抽取 5 封 · 点击信封拆开阅读并回信'
-      : '共 ' + LETTERS.length + ' 封信 · 点击任一信封拆开阅读并回信';
+      ? '已随机抽取 5 封 · 点击信封，读一读那些来自远方的回答'
+      : '共 ' + LETTERS.length + ' 封信 · 点击任一信封拆开阅读';
 
     wall.innerHTML = ids.map(function (id) {
       var lt = byId(id);
       var sig = lt.signature ? '<div class="card-sign">—— ' + esc(lt.signature) + '</div>' : '';
+      var count = (lt.answers || []).length;
+      var badge = count ? '<span class="card-count">' + count + ' 封回信</span>' : '';
       return (
         '<article class="letter-card reveal" data-id="' + id + '" tabindex="0" role="button" aria-label="拆开第 ' + id + ' 封信">' +
           '<div class="card-head">' +
             '<span class="card-no">第 ' + id + ' 封</span>' +
-            '<span class="card-seal">✉</span>' +
+            '<div class="card-head-right">' + badge + '<span class="card-seal">✉</span></div>' +
           '</div>' +
           '<div class="card-body">' + linesHtml(lt.lines) + '</div>' +
           sig +
@@ -77,6 +93,39 @@
     }).join('');
 
     observeReveals();
+  }
+
+  /* ---------- 回答列表 HTML ---------- */
+  function answersHtml(lt) {
+    var ans = sortedAnswers(lt);
+    if (!ans.length) {
+      return (
+        '<div class="answers-section">' +
+          '<div class="answers-head"><h4>来自天南地北的回信</h4></div>' +
+          '<div class="answers-empty">这封信，还在等它的回音。</div>' +
+        '</div>'
+      );
+    }
+    var cards = ans.map(function (a) {
+      return (
+        '<article class="answer-card">' +
+          '<div class="answer-body">' + linesHtml(a.lines) + '</div>' +
+          '<div class="answer-meta">' +
+            '<span class="answer-author">—— ' + esc(a.author) + '</span>' +
+            (a.time ? '<span class="answer-time">' + esc(a.time) + '</span>' : '') +
+          '</div>' +
+        '</article>'
+      );
+    }).join('');
+    return (
+      '<div class="answers-section">' +
+        '<div class="answers-head">' +
+          '<h4>来自天南地北的回信</h4>' +
+          '<span class="answers-count">共 ' + ans.length + ' 封</span>' +
+        '</div>' +
+        '<div class="answers-list">' + cards + '</div>' +
+      '</div>'
+    );
   }
 
   /* ---------- 信件详情 ---------- */
@@ -103,15 +152,8 @@
             '<img src="assets/photos/' + id + '.jpg" alt="第 ' + id + ' 封信手写原稿" loading="lazy" />' +
           '</div>' +
         '</div>' +
-        '<div class="ev-box">' +
-          '<h4>扫描二维码，写下你的回答</h4>' +
-          '<div class="ev-sub">用你的经历，认真回一封</div>' +
-          '<div class="qr-frame">' +
-            '<img src="assets/qrcodes/' + id + '.png" alt="第 ' + id + ' 封信答题二维码" />' +
-            '<p class="qr-tip">手机扫码，即可进入这封信的答题页面。<br />也许只要几分钟，<strong>却足以照亮一个孩子。</strong></p>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
+      '</div>' +
+      answersHtml(lt);
 
     overlay.hidden = false;
     modalScroll.scrollTop = 0;
@@ -182,6 +224,49 @@
     }
     document.querySelectorAll('.reveal:not(.visible)').forEach(function (el) { io.observe(el); });
   }
+
+  /* ---------- 背景音乐 ---------- */
+  var bgm = new Audio('assets/audio/bgm.mp3');
+  bgm.loop = true;
+  bgm.volume = 0.55;
+  bgm.preload = 'auto';
+  var playing = false;
+
+  function setPlaying(on) {
+    playing = on;
+    musicToggle.classList.toggle('playing', on);
+    musicToggle.classList.toggle('paused', !on);
+    musicToggle.setAttribute('title', on ? '暂停背景音乐' : '播放背景音乐');
+    musicToggle.setAttribute('aria-label', on ? '暂停背景音乐' : '播放背景音乐');
+  }
+
+  function tryPlay() {
+    bgm.play().then(function () { setPlaying(true); }).catch(function () { setPlaying(false); });
+  }
+
+  musicToggle.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (playing) {
+      bgm.pause();
+      setPlaying(false);
+    } else {
+      tryPlay();
+    }
+  });
+
+  // 初始尝试自动播放
+  tryPlay();
+
+  // 浏览器可能拦截自动播放：首次用户交互时若仍未播放，则补一次
+  var interactionHandler = function () {
+    if (!playing) tryPlay();
+    document.removeEventListener('click', interactionHandler);
+    document.removeEventListener('keydown', interactionHandler);
+    document.removeEventListener('touchstart', interactionHandler);
+  };
+  document.addEventListener('click', interactionHandler);
+  document.addEventListener('keydown', interactionHandler);
+  document.addEventListener('touchstart', interactionHandler);
 
   /* ---------- 启动 ---------- */
   render();
